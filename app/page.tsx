@@ -1,113 +1,206 @@
-import Image from 'next/image'
+"use client";
+import React, {
+  useState,
+  type ChangeEvent,
+  useEffect,
+  useCallback,
+} from "react";
+import dayjs from "dayjs";
+import {
+  type PublicHoliday,
+  countryCodes,
+  type CountryCodes,
+} from "./data/data";
 
-export default function Home() {
-  return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">app/page.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+const format = (date: Date, format: string): string => {
+  return dayjs(date).format(format);
+};
+
+const isWeekend = (date: Date): boolean => {
+  const day = date.getDay();
+  return day === 0 || day === 6;
+};
+
+const CalendarPage = (): JSX.Element => {
+  const [year, setYear] = useState<number>(new Date().getFullYear());
+  const [location, setLocation] = useState<string>("US");
+  const [publicHolidays, setPlublicHoliday] = useState<PublicHoliday[]>([]);
+  const [error, setError] = useState(false);
+
+  const handleYearChange = (e: ChangeEvent<HTMLInputElement>): void => {
+    setYear(Number(e.target.value));
+  };
+
+  const handleLocationChange = (
+    e: React.ChangeEvent<HTMLSelectElement>
+  ): void => {
+    setLocation(e.target.value);
+  };
+
+  const extractDate = (date: string): Date => {
+    const [year, month, day] = date.split("-");
+    return new Date(Number(year), Number(month) - 1, Number(day));
+  };
+
+  function fromPublicHolidaysToMap(
+    publicHolidays: PublicHoliday[]
+  ): Map<string, PublicHoliday> {
+    const publicHolidaysMap = new Map<string, PublicHoliday>();
+    publicHolidays.forEach((holiday) => {
+      const extractedDate = extractDate(holiday.date);
+      const date = format(extractedDate, "YYYY/MM/DD");
+      publicHolidaysMap.set(date, holiday);
+    });
+    return publicHolidaysMap;
+  }
+
+  const generateCalendar = (): JSX.Element[] => {
+    // Replace this dummy data with an API call to fetch actual public holidays based on the location and year
+    const publicHolidaysMap = fromPublicHolidaysToMap(publicHolidays);
+
+    const calendarMonths: JSX.Element[] = [];
+    for (let month = 0; month < 12; month++) {
+      const monthName = format(new Date(year, month, 1), "MMMM");
+      const calendarDays: JSX.Element[] = [];
+      for (let day = 1; day <= 31; day++) {
+        const currentDate = new Date(year, month, day);
+        if (currentDate.getMonth() !== month) {
+          break;
+        }
+        const today = format(currentDate, "YYYY/MM/DD");
+        const publicHoliday = publicHolidaysMap.get(today);
+        const isHoliday = publicHoliday !== undefined ? true : false;
+
+        calendarDays.push(
+          <div
+            key={currentDate.getTime()}
+            className={
+              `${isWeekend(currentDate) ? "weekend" : "workday"}` +
+              `${isHoliday ? " bg-green-200 " : ""}` +
+              ` rounded p-2 text-center`
+            }
+            data-tooltip-target={isHoliday ? publicHoliday?.name : ""}
           >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+            <div className="flex flex-col">
+              <span>
+                {currentDate.getDate() <= 7 ? format(currentDate, "dd") : ""}
+              </span>
+              <span>{currentDate.getDate()}</span>
+            </div>
+            {isHoliday && (
+              <div
+                id={publicHoliday?.name}
+                role="tooltip"
+                className="tooltip invisible absolute z-10 inline-block rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white opacity-0 shadow-sm transition-opacity duration-300 dark:bg-gray-700"
+              >
+                {publicHoliday?.name}
+
+                <div className="tooltip-arrow"></div>
+              </div>
+            )}
+          </div>
+        );
+      }
+      calendarMonths.push(
+        <div key={month} className={`${monthName} `}>
+          <h2 className="mb-2 text-xl font-semibold">{monthName}</h2>
+          <div className="grid grid-cols-7 gap-4">{calendarDays}</div>
         </div>
+      );
+    }
+
+    return calendarMonths;
+  };
+
+  const handleGetCalendar = useCallback(async () => {
+    const res = await fetch(
+      `https://date.nager.at/api/v2/publicholidays/${year}/${location}`
+    );
+    if (!res.ok) {
+      throw new Error("Failed to fetch data");
+    }
+    if (res.status !== 200) {
+      setError(true);
+    } else {
+      setError(false);
+    }
+
+    return res.json();
+  }, [location, year]);
+
+  useEffect(() => {
+    handleGetCalendar()
+      .then((data: PublicHoliday[]) => setPlublicHoliday(data))
+      .catch((err) => console.log(err));
+  }, [year, location, handleGetCalendar]);
+
+  const calendarOrError = error ? null : (
+    <div className="  pflex mx-8 min-h-min flex-col  bg-slate-400 p-4 px-3">
+      <div className="mb-4 grid grid-cols-2 bg-slate-400 px-2">
+        <span className="">Date</span>
+        <span className="">Description</span>
       </div>
+      {publicHolidays.map((holiday, i) => {
+        return (
+          <div
+            key={`${holiday.name} + ${i}`}
+            className="mb-2 grid grid-cols-2 rounded bg-slate-300 text-left"
+          >
+            <div>{holiday.date}</div>
+            <div>{holiday.name}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
 
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
+  return (
+    <div className="flex min-h-screen bg-slate-800 py-10 text-black">
+      <div className="mx-auto max-w-5xl rounded bg-slate-400 p-6 shadow">
+        <h1 className="mb-6 text-2xl font-bold">Public Holiday Calendar</h1>
+        <div className="mb-4">
+          <label htmlFor="year" className="mb-1 block font-medium">
+            Year:
+          </label>
+          <input
+            type="number"
+            id="year"
+            value={year}
+            onChange={handleYearChange}
+            className="w-full rounded border border-gray-300 bg-slate-200 px-3 py-2 focus:border-blue-500 focus:outline-none"
+          />
+        </div>
+        <div className="mb-8">
+          <label htmlFor="location" className="mb-1 block font-medium">
+            Location:
+          </label>
+          <select
+            id="location"
+            value={location}
+            onChange={handleLocationChange}
+            className="w-full rounded border border-gray-300 bg-slate-200 px-3 py-2 focus:border-blue-500 focus:outline-none"
+          >
+            {countryCodes.map((country: CountryCodes) => {
+              return (
+                <option key={country.code} value={country.code}>
+                  {country.name}
+                </option>
+              );
+            })}
+          </select>
+        </div>
+
+        {error ? (
+          <div>Failed to fetch data</div>
+        ) : (
+          <div className="mt-8 grid grid-cols-3 gap-5 ">
+            {generateCalendar()}
+          </div>
+        )}
       </div>
+      {calendarOrError}
+    </div>
+  );
+};
 
-      <div className="mb-32 grid text-center lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800 hover:dark:bg-opacity-30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Explore the Next.js 13 playground.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
-  )
-}
+export default CalendarPage;

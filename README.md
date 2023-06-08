@@ -1,3 +1,29 @@
+## Calendar App
+
+Create a simple next.js or remix website where you can create a calendar that shows
+public holidays based on a location. The user should be able to manually input their
+location if access to their location isn’t granted via the browser. The user should
+then be able to select any year (past or present) and the site should generate a
+calendar where the user can easily see the public holidays
+
+
+## Requirements
+
+ - Should use either Remix or Next.js for serving the frontend
+ - Should have at least one unit test
+ - Users should be able to select a country and a year and a full calendar as seen above should be displayed.
+ - Holidays should be highlighted on the calendar.
+
+## NTH
+
+- Frontend written in Typescript
+- Using Tailwind CSS + SASS for styling
+
+## Resources
+
+ - https://date.nager.at/api/v2/publicholidays/2022/US
+ - https://gist.github.com/anubhavshrimal/75f6183458db8c453306f93521e93d37
+
 This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
 ## Getting Started

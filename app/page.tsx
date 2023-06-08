@@ -134,7 +134,13 @@ const CalendarPage = (): JSX.Element => {
       .catch((err) => console.log(err));
   }, [year, location, handleGetCalendar]);
 
-  const calendarOrError = error ? null : (
+  const calendarOrError = error ? (
+    <div className="pflex mx-8 min-h-min flex-col bg-slate-400 p-4 px-3 ">
+      <div className="mb-2 grid grid-cols-2 rounded bg-slate-300 text-left">
+        <div>Failed to fetch data</div>
+      </div>
+    </div>
+  ) : (
     <div className="  pflex mx-8 min-h-min flex-col  bg-slate-400 p-4 px-3">
       <div className="mb-4 grid grid-cols-2 bg-slate-400 px-2">
         <span className="">Date</span>
@@ -155,8 +161,8 @@ const CalendarPage = (): JSX.Element => {
   );
 
   return (
-    <div className="flex min-h-screen bg-slate-800 py-10 text-black">
-      <div className="mx-auto max-w-5xl rounded bg-slate-400 p-6 shadow">
+    <div className="flex min-h-screen bg-slate-800 py-10 text-black w-full justify-center align-center">
+      <div className="mx-auto max-w-5xl rounded bg-slate-400 p-6 shadow w-full">
         <h1 className="mb-6 text-2xl font-bold">Public Holiday Calendar</h1>
         <div className="mb-4">
           <label htmlFor="year" className="mb-1 block font-medium">
@@ -189,11 +195,10 @@ const CalendarPage = (): JSX.Element => {
             })}
           </select>
         </div>
-
         {error ? (
-          <div>Failed to fetch data</div>
+          <div className="w-full">Failed to fetch data</div>
         ) : (
-          <div className="mt-8 grid grid-cols-3 gap-5 ">
+          <div className="mt-8 grid grid-cols-3 gap-5 w-full">
             {generateCalendar()}
           </div>
         )}
